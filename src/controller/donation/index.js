@@ -81,7 +81,7 @@ const makeDonation = async (req, res) => {
           totalDonated: numericAmount,
         },
       },
-      { new: true },
+      { returnDocument: "after" }, // Updated from { new: true }
     );
 
     // ৫. Update Case Raised Amount & Donors Count

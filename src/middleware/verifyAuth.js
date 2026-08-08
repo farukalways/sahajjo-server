@@ -1,12 +1,11 @@
-import { getToken } from "next-auth/jwt";
+import jwt from "jsonwebtoken";
+
 export const verifyAuth = async (req, res, next) => {
   try {
-    const token = await getToken({
-      req: { headers: req.headers, cookies: req.cookies },
-      secret: process.env.AUTH_SECRET,
-      salt: "authjs.session-token", // v5-এ যোগ করুন
-    });
+    // ১. cookie-parser এর মাধ্যমে কুকি থেকে টোকেন নেওয়া
+    const token = req.cookies?.accessToken;
 
+    // টোকেন না থাকলে ৪০১ রেসপন্স
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -14,18 +13,23 @@ export const verifyAuth = async (req, res, next) => {
       });
     }
 
-    // টোকেন ডাটা রিকোয়েস্টে অ্যাসাইন করা
+    // ২. JWT টোকেন ভেরিফাই করা
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+
+    // ৩. ডিকোড করা ডাটা রিকোয়েস্টে সেট করা
     req.user = {
-      id: token.id || token.sub, // NextAuth ডিফল্ট আইডি সাধারণত 'sub' এ রাখে
-      email: token.email,
-      name: token.name,
-      role: token.role,
-      coinBalance: token.coinBalance,
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
     };
 
-    next();
+    next(); // পরবর্তী কন্ট্রোলার বা মিডলওয়্যারে পাঠানো
   } catch (error) {
-    console.error("Auth middleware error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("Auth middleware error:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "টোকেনটি অবৈধ অথবা এক্সপায়ার্ড হয়ে গেছে!",
+    });
   }
 };
